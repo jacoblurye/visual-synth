@@ -5,15 +5,29 @@
   */
 
 const ctx = new (window.AudioContext || window.webkitAudioContext);
+var biquadFilter = ctx.createBiquadFilter();
+
+// filter ish, this should be user settable too!
+biquadFilter.connect(ctx.destination);
+biquadFilter.type = "lowpass";
+biquadFilter.frequency.setValueAtTime(500, ctx.currentTime);
+biquadFilter.gain.setValueAtTime(100, ctx.currentTime);
+biquadFilter.Q.setValueAtTime(15, ctx.currentTime);
+
+const DEFAULT_GAIN = 0.3;
+
 var globalID = 0;
+
+var backgroundColor = '#123552';
+var highlightedColor = '#FAE773';
 
 class ToneCircle {
   constructor(initx, inity, wavetype="sine") {
     // Wire up the oscillator
     this.osc  = ctx.createOscillator();
     this.gain = ctx.createGain();
-    this.osc.connect(this.gain)
-            .connect(ctx.destination);
+    this.osc.connect(this.gain);
+            // .connect(ctx.destination);
 
     // Initialize oscillator parameters
     this.osc.type = wavetype;
@@ -55,6 +69,7 @@ class ToneCircle {
     // Power up oscillator
     this.osc.frequency.setValueAtTime(0, ctx.currentTime);
     this.gain.gain.setValueAtTime(0, ctx.currentTime);
+    this.gain.connect(biquadFilter);
     this.osc.start(0);
   }
 
@@ -69,6 +84,20 @@ class ToneCircle {
       this.$this.css('border', '1px dashed rgba(255, 255, 255, 1)')
     else
       this.$this.css('border', '1px dashed rgba(255, 255, 255, 0)')
+  }
+
+  whichStep() {
+    let y = this.$this.offset().top;
+    let stepHeight = (window.innerHeight - 60) / NUMSTEPS;
+    return Math.floor(y / stepHeight); 
+  }
+
+  makeNote(duration) {
+    this.gain.gain.setValueAtTime(DEFAULT_GAIN, ctx.currentTime);
+    this.$this.css('background-color', highlightedColor);
+    setTimeout(() => {
+      this.gain.gain.setValueAtTime(0, ctx.currentTime);
+      this.$this.css('background-color', backgroundColor);}, duration);
   }
 
   move(event) {
@@ -89,7 +118,8 @@ class ToneCircle {
     // Update oscillator attributes
     const newGain = (window.innerHeight - event.pageY) / oscAttrs.GAINSCALE;
     const newFreq = event.pageX / oscAttrs.FREQSCALE;
-    this.gain.gain.setValueAtTime(newGain, ctx.currentTime);
+    // disabled vertical pos as gain
+    // this.gain.gain.setValueAtTime(newGain, ctx.currentTime);
     this.osc.frequency.setValueAtTime(newFreq, ctx.currentTime);
   }
 }
